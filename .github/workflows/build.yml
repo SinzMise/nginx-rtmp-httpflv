@@ -39,31 +39,14 @@ jobs:
           nasm
           make
 
-    - name: Download sources (PowerShell)
-      shell: pwsh
+    - name: Download sources (msys2)
+      shell: msys2 {0}
       run: |
-        New-Item -ItemType Directory -Force -Path objs/lib
-        Set-Location objs/lib
-
-        Invoke-WebRequest `
-          -Uri https://nginx.org/download/nginx-${{ env.NGINX_VER }}.tar.gz `
-          -OutFile nginx.tgz
-        tar -xzf nginx.tgz
-        Remove-Item nginx.tgz
-
-        Invoke-WebRequest `
-          -Uri https://github.com/arut/nginx-rtmp-module/archive/v${{ env.RTMP_VER }}.tar.gz `
-          -OutFile rtmp.tgz
-        tar -xzf rtmp.tgz
-        Move-Item nginx-rtmp-module-* nginx-rtmp-module
-        Remove-Item rtmp.tgz
-
-        Invoke-WebRequest `
-          -Uri https://github.com/winshining/nginx-http-flv-module/archive/${{ env.HTTPFLV_VER }}.tar.gz `
-          -OutFile flv.tgz
-        tar -xzf flv.tgz
-        Move-Item nginx-http-flv-module-* nginx-http-flv-module
-        Remove-Item flv.tgz
+        mkdir -p objs/lib
+        cd "$(cygpath -u '${{ github.workspace }}')/objs/lib"   # 转成 /d/a/repo/repo 形式
+        curl -L "https://nginx.org/download/nginx-${{ env.NGINX_VER }}.tar.gz" | tar xz
+        curl -L "https://github.com/arut/nginx-rtmp-module/archive/v${{ env.RTMP_VER }}.tar.gz" | tar xz --transform 's/.*\///'
+        curl -L "https://github.com/winshining/nginx-http-flv-module/archive/${{ env.HTTPFLV_VER }}.tar.gz" | tar xz --transform 's/.*\///'
 
     - name: Configure
       run: |
