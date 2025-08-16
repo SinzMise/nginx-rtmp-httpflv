@@ -43,7 +43,7 @@ jobs:
       shell: msys2 {0}
       run: |
         mkdir -p objs/lib
-        cd "$(cygpath -u '${{ github.workspace }}')/objs/lib"   # 转成 /d/a/repo/repo 形式
+        cd "$(cygpath -u '${{ github.workspace }}')/objs/lib"
         curl -L "https://nginx.org/download/nginx-${{ env.NGINX_VER }}.tar.gz" | tar xz
         curl -L "https://github.com/arut/nginx-rtmp-module/archive/v${{ env.RTMP_VER }}.tar.gz" | tar xz --transform 's/.*\///'
         curl -L "https://github.com/winshining/nginx-http-flv-module/archive/${{ env.HTTPFLV_VER }}.tar.gz" | tar xz --transform 's/.*\///'
