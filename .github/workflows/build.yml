@@ -65,6 +65,13 @@ jobs:
         Move-Item nginx-http-flv-module-* nginx-http-flv-module
         Remove-Item flv.tgz
 
+        # pcre2
+        Invoke-WebRequest `
+          -Uri https://github.com/PCRE2Project/pcre2/releases/download/pcre2-${{ env.PCRE2_VER }}/pcre2-${{ env.PCRE2_VER }}.tar.gz `
+          -OutFile pcre2.tgz
+        tar -xzf pcre2.tgz
+        Move-Item pcre2-${{ env.PCRE2_VER }} pcre2-${{ env.PCRE2_VER }}
+
     - name: Configure
       shell: msys2 {0}
       run: |
