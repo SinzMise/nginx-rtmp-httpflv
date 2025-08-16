@@ -68,6 +68,7 @@ jobs:
     - name: Configure
       run: |
         cd objs/lib/nginx-${{ env.NGINX_VER }}
+        dir
         auto/configure \
           --with-cc=cl \
           --with-debug \
