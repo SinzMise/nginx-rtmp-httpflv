@@ -69,19 +69,16 @@ jobs:
           -Uri https://github.com/PCRE2Project/pcre2/releases/download/pcre2-${{ env.PCRE2_VER }}/pcre2-${{ env.PCRE2_VER }}.tar.gz `
           -OutFile pcre2.tgz
         tar -xzf pcre2.tgz
-        Move-Item pcre2-${{ env.PCRE2_VER }} pcre2
 
         Invoke-WebRequest `
           -Uri https://zlib.net/fossils/zlib-${{ env.ZLIB_VER }}.tar.gz `
           -OutFile zlib.tgz
         tar -xzf zlib.tgz
-        Move-Item zlib-${{ env.ZLIB_VER }} zlib
 
         Invoke-WebRequest `
           -Uri https://github.com/openssl/openssl/releases/download/openssl-${{ env.OPENSSL_VER }}/openssl-${{ env.OPENSSL_VER }}.tar.gz `
           -OutFile openssl.tgz
         tar -xzf openssl.tgz
-        Move-Item openssl-${{ env.OPENSSL_VER }} openssl
         
     - name: Configure
       shell: msys2 {0}
@@ -89,6 +86,7 @@ jobs:
         cd "$(cygpath -u '${{ github.workspace }}')/objs/lib/nginx-${{ env.NGINX_VER }}"
         ./configure \
           --with-cc=cl \
+          --with-cc-opt="-DFD_SETSIZE=1024 /wd5294" \
           --with-debug \
           --prefix="" \
           --conf-path=conf/nginx.conf \
@@ -102,10 +100,10 @@ jobs:
           --http-scgi-temp-path=temp/scgi_temp \
           --http-uwsgi-temp-path=temp/uwsgi_temp \
           --with-cc-opt="-DFD_SETSIZE=1024" \
-          --with-openssl=../openssl \
+          --with-openssl=../openssl-${{ env.OPENSSL_VER }} \
           --with-openssl-opt=no-asm \
-          --with-pcre=../pcre2 \
-          --with-zlib=../zlib \
+          --with-pcre=../pcre2-${{ env.PCRE2_VER }} \
+          --with-zlib=../zlib-${{ env.ZLIB_VER }} \
           --with-http_ssl_module \
           --add-module=../nginx-rtmp-module \
           --add-module=../nginx-http-flv-module
