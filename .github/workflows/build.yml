@@ -93,8 +93,16 @@ jobs:
           --add-module=../nginx-http-flv-module
 
     - name: Build
+      shell: pwsh
       run: |
-        cd objs/lib/nginx-${{ env.NGINX_VER }}
+        # 进入 VS 2022 的 64-bit 开发者环境
+        Import-Module "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\Common7\Tools\Microsoft.VisualStudio.DevShell.dll"
+        Enter-VsDevShell -VsInstallPath "C:\Program Files\Microsoft Visual Studio\2022\Enterprise" -Arch amd64
+
+        # 切到源码目录
+        Set-Location objs/lib/nginx-${{ env.NGINX_VER }}
+
+        # 执行 nmake
         nmake -f objs/Makefile
 
     - name: Collect artifact
