@@ -79,7 +79,17 @@ jobs:
           -Uri https://github.com/openssl/openssl/releases/download/openssl-${{ env.OPENSSL_VER }}/openssl-${{ env.OPENSSL_VER }}.tar.gz `
           -OutFile openssl.tgz
         tar -xzf openssl.tgz
-        
+
+    - name: Patch PCRE2 MSVC makefile (add missing pcre2_util.c)
+      shell: pwsh
+      run: |
+        $makefile = "objs/lib/pcre2-${{ env.PCRE2_VER }}/Makefile.msvc"
+        # 找到 OBJS 行，把 pcre2_util.obj 插进去
+        (Get-Content $makefile) -replace `
+          '(OBJS\s*=.*pcre2_string_utils\.obj)', `
+          '$1 pcre2_util.obj' |
+          Set-Content $makefile
+
     - name: Configure
       shell: msys2 {0}
       run: |
