@@ -103,7 +103,7 @@ jobs:
           --with-openssl-opt=no-asm \
           --with-pcre=../pcre2 \
           --with-pcre-opt="-DPCRE2_STATIC -DPCRE2_CODE_UNIT_WIDTH=8 -I$(vcpkg fetch pcre2)/include" \
-          --with-ld-opt="/LIBPATH:$(vcpkg fetch pcre2)/lib pcre2-8-static.lib"
+          --with-ld-opt="/LIBPATH:$(vcpkg fetch pcre2)/lib pcre2-8-static.lib" \
           --with-zlib=../zlib-${{ env.ZLIB_VER }} \
           --with-http_ssl_module \
           --add-module=../nginx-rtmp-module \
