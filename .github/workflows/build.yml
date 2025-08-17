@@ -107,17 +107,20 @@ jobs:
           --add-module=../nginx-rtmp-module \
           --add-module=../nginx-http-flv-module
 
+    - name: Hot-fix int8_t redefinition
+      shell: msys2 {0}
+      run: |
+        cd "$(cygpath -u '${{ github.workspace }}')/objs/lib/nginx-rtmp-module"
+        sed -i '/typedef.*int8_t/ s/^/\/\//' ngx_rtmp.h
+
     - name: Build
       shell: pwsh
       run: |
-        # 进入 VS 2022 的 64-bit 开发者环境
         Import-Module "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\Common7\Tools\Microsoft.VisualStudio.DevShell.dll"
         Enter-VsDevShell -VsInstallPath "C:\Program Files\Microsoft Visual Studio\2022\Enterprise" -Arch amd64
 
-        # 切到源码目录
         Set-Location objs/lib/nginx-${{ env.NGINX_VER }}
 
-        # 执行 nmake
         nmake -f objs/Makefile
 
     - name: Collect artifact
@@ -140,9 +143,9 @@ jobs:
 
     - name: Create/Update GitHub Release
       uses: softprops/action-gh-release@v2
-      if: github.ref == 'refs/heads/main'   # 只有 main 分支才发版
+      if: github.ref == 'refs/heads/main'
       with:
-        tag_name: nightly                   # 自动打 nightly 标签，可改用 ${{ github.ref_name }}
+        tag_name: nightly
         name: "Nightly build (${{ github.run_number }})"
         body: |
           ## 🚀 自动构建 Windows 版 nginx
