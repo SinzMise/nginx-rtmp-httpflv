@@ -98,7 +98,7 @@ jobs:
           --http-fastcgi-temp-path=temp/fastcgi_temp \
           --http-scgi-temp-path=temp/scgi_temp \
           --http-uwsgi-temp-path=temp/uwsgi_temp \
-          --with-cc-opt="-DFD_SETSIZE=1024 /wd5294" \
+          --with-cc-opt="-DFD_SETSIZE=1024 -W3" \
           --with-openssl=../openssl-${{ env.OPENSSL_VER }} \
           --with-openssl-opt=no-asm \
           --with-pcre=../pcre2-${{ env.PCRE2_VER }} \
