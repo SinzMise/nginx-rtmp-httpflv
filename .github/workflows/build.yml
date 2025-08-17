@@ -86,6 +86,7 @@ jobs:
         cd "$(cygpath -u '${{ github.workspace }}')/objs/lib/nginx-${{ env.NGINX_VER }}"
         ./configure \
           --with-cc=cl \
+          --with-cc-opt="-DFD_SETSIZE=1024 -W3 -WX-" \
           --with-debug \
           --prefix="" \
           --conf-path=conf/nginx.conf \
@@ -98,7 +99,6 @@ jobs:
           --http-fastcgi-temp-path=temp/fastcgi_temp \
           --http-scgi-temp-path=temp/scgi_temp \
           --http-uwsgi-temp-path=temp/uwsgi_temp \
-          --with-cc-opt="-DFD_SETSIZE=1024 -W3" \
           --with-openssl=../openssl-${{ env.OPENSSL_VER }} \
           --with-openssl-opt=no-asm \
           --with-pcre=../pcre2-${{ env.PCRE2_VER }} \
