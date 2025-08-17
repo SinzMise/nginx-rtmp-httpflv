@@ -102,16 +102,11 @@ jobs:
           --with-openssl=../openssl-${{ env.OPENSSL_VER }} \
           --with-openssl-opt=no-asm \
           --with-pcre=../pcre2-${{ env.PCRE2_VER }} \
+          --with-pcre-opt="-DPCRE2_STATIC -DPCRE2_CODE_UNIT_WIDTH=8" \
           --with-zlib=../zlib-${{ env.ZLIB_VER }} \
           --with-http_ssl_module \
           --add-module=../nginx-rtmp-module \
           --add-module=../nginx-http-flv-module
-
-    - name: Hot-fix int8_t redefinition
-      shell: msys2 {0}
-      run: |
-        cd "$(cygpath -u '${{ github.workspace }}')/objs/lib/nginx-rtmp-module"
-        sed -i '/typedef.*int8_t/ s/^/\/\//' ngx_rtmp.h
 
     - name: Build
       shell: pwsh
