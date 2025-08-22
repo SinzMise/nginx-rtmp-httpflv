@@ -9,7 +9,8 @@ on:
 env:
   # Nginx 版本配置
   NGINX_VERSION: 1.25.3
-  NGINX_DOWNLOAD_URL: http://nginx.org/download/nginx-${{ env.NGINX_VERSION }}.tar.gz
+  # 在env内部引用其他环境变量时直接使用变量名，不需要${{ env. }}语法
+  NGINX_DOWNLOAD_URL: http://nginx.org/download/nginx-${NGINX_VERSION}.tar.gz
   
   # RTMP模块配置
   RTMP_MODULE_REPO: https://github.com/arut/nginx-rtmp-module.git
