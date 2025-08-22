@@ -1,174 +1,135 @@
-name: Build nginx with RTMP/HLS/HTTP-FLV
+name: Build and Release Nginx with Env Config
 
 on:
   push:
-    branches: [ main ]
-  workflow_dispatch:
+    tags:
+      - 'v*'  # 标签推送触发
+  workflow_dispatch:  # 允许手动触发
 
 env:
-  NGINX_VER: 1.27.0
-  RTMP_VER:  1.2.2
-  HTTPFLV_VER: 1.2.12
-  OPENSSL_VER: 3.3.1
-  PCRE2_VER: 10.44
-  ZLIB_VER: 1.3.1
+  # Nginx 版本配置
+  NGINX_VERSION: 1.25.3
+  NGINX_DOWNLOAD_URL: http://nginx.org/download/nginx-${{ env.NGINX_VERSION }}.tar.gz
+  
+  # RTMP模块配置
+  RTMP_MODULE_REPO: https://github.com/arut/nginx-rtmp-module.git
+  RTMP_MODULE_BRANCH: master
+  
+  # HTTP-FLV模块配置
+  FLV_MODULE_REPO: https://github.com/winshining/nginx-http-flv-module.git
+  FLV_MODULE_BRANCH: master
+  
+  # 构建输出目录
+  BUILD_DIR: /c/nginx-build
+  DIST_DIR: /c/nginx-build/dist
+  ARTIFACT_NAME: nginx-windows-rtmp-hls-flv
 
 jobs:
   build:
-    runs-on: windows-2022
-
-    defaults:
-      run:
-        shell: msys2 {0}
-
+    runs-on: windows-latest
+    
     steps:
-    - name: Checkout
+    - name: Checkout code
       uses: actions/checkout@v4
-
-    - name: Setup MSYS2
+      
+    - name: Set up MSYS2
       uses: msys2/setup-msys2@v2
       with:
-        msystem: MINGW64
         update: true
         install: >-
-          git
+          base-devel
           mingw-w64-x86_64-toolchain
           mingw-w64-x86_64-openssl
-          mingw-w64-x86_64-pcre2
-          mingw-w64-x86_64-zlib
-          nasm
-          make
-
-    - name: Download sources (PowerShell)
-      shell: pwsh
-      run: |
-        New-Item -ItemType Directory -Force -Path objs/lib
-        Set-Location objs/lib
-
-        Invoke-WebRequest `
-          -Uri https://nginx.org/download/nginx-${{ env.NGINX_VER }}.tar.gz `
-          -OutFile nginx.tgz
-        tar -xzf nginx.tgz
-        Remove-Item nginx.tgz
-
-        Invoke-WebRequest `
-          -Uri https://github.com/arut/nginx-rtmp-module/archive/refs/tags/v${{ env.RTMP_VER }}.tar.gz `
-          -OutFile rtmp.tgz
-        tar -xzf rtmp.tgz
-        Move-Item nginx-rtmp-module-* nginx-rtmp-module
-        Remove-Item rtmp.tgz
-
-        Invoke-WebRequest `
-          -Uri https://github.com/winshining/nginx-http-flv-module/archive/refs/tags/v${{ env.HTTPFLV_VER }}.tar.gz `
-          -OutFile flv.tgz
-        tar -xzf flv.tgz
-        Move-Item nginx-http-flv-module-* nginx-http-flv-module
-        Remove-Item flv.tgz
-
-        Invoke-WebRequest `
-          -Uri https://zlib.net/fossils/zlib-${{ env.ZLIB_VER }}.tar.gz `
-          -OutFile zlib.tgz
-        tar -xzf zlib.tgz
-
-        Invoke-WebRequest `
-          -Uri https://github.com/openssl/openssl/releases/download/openssl-${{ env.OPENSSL_VER }}/openssl-${{ env.OPENSSL_VER }}.tar.gz `
-          -OutFile openssl.tgz
-        tar -xzf openssl.tgz
-
-    - name: Install PCRE2 via vcpkg
-      shell: pwsh
-      run: |
-        vcpkg install pcre2:x64-windows-static
-
-    - name: Configure
+          mingw-w64-x86_64-pcre
+          git
+          wget
+          
+    - name: Prepare build environment
       shell: msys2 {0}
       run: |
-        cd "$(cygpath -u '${{ github.workspace }}')/objs/lib/nginx-${{ env.NGINX_VER }}"
+        # 安装必要的工具
+        pacman -S --noconfirm make automake libtool zlib-devel
+        
+        # 创建工作目录
+        mkdir -p ${{ env.BUILD_DIR }}
+        cd ${{ env.BUILD_DIR }}
+        
+        # 下载并解压Nginx源码
+        echo "Downloading Nginx ${{ env.NGINX_VERSION }}..."
+        wget ${{ env.NGINX_DOWNLOAD_URL }}
+        tar -zxvf nginx-${{ env.NGINX_VERSION }}.tar.gz
+        mv nginx-${{ env.NGINX_VERSION }} nginx
+        
+        # 克隆RTMP模块
+        echo "Cloning RTMP module..."
+        git clone -b ${{ env.RTMP_MODULE_BRANCH }} ${{ env.RTMP_MODULE_REPO }}
+        
+        # 克隆HTTP-FLV模块
+        echo "Cloning HTTP-FLV module..."
+        git clone -b ${{ env.FLV_MODULE_BRANCH }} ${{ env.FLV_MODULE_REPO }}
+        
+    - name: Configure and build Nginx
+      shell: msys2 {0}
+      run: |
+        cd ${{ env.BUILD_DIR }}/nginx
+        
+        # 配置编译选项
         ./configure \
-          --with-cc=cl \
-          --with-cc-opt="-DFD_SETSIZE=1024 -W3 -WX-" \
+          --with-cc=clang \
           --with-debug \
-          --prefix="" \
+          --prefix= \
+          --sbin-path=nginx.exe \
           --conf-path=conf/nginx.conf \
           --pid-path=logs/nginx.pid \
-          --http-log-path=logs/access.log \
           --error-log-path=logs/error.log \
-          --sbin-path=nginx.exe \
-          --http-client-body-temp-path=temp/client_body_temp \
-          --http-proxy-temp-path=temp/proxy_temp \
-          --http-fastcgi-temp-path=temp/fastcgi_temp \
-          --http-scgi-temp-path=temp/scgi_temp \
-          --http-uwsgi-temp-path=temp/uwsgi_temp \
-          --with-openssl=../openssl-${{ env.OPENSSL_VER }} \
-          --with-openssl-opt=no-asm \
-          --with-pcre=../pcre2 \
-          --with-pcre-opt="-DPCRE2_STATIC -DPCRE2_CODE_UNIT_WIDTH=8 -I$(vcpkg fetch pcre2)/include" \
-          --with-ld-opt="/LIBPATH:$(vcpkg fetch pcre2)/lib pcre2-8-static.lib" \
-          --with-zlib=../zlib-${{ env.ZLIB_VER }} \
+          --http-log-path=logs/access.log \
+          --with-pcre \
+          --with-openssl \
           --with-http_ssl_module \
-          --add-module=../nginx-rtmp-module \
-          --add-module=../nginx-http-flv-module
-
-    - name: Build
-      shell: pwsh
+          --with-http_v2_module \
+          --add-module=${{ env.BUILD_DIR }}/nginx-rtmp-module \
+          --add-module=${{ env.BUILD_DIR }}/nginx-http-flv-module \
+          --with-http_flv_module \
+          --with-http_mp4_module
+        
+        # 编译
+        make -j$(nproc)
+        
+        # 安装到发布目录
+        make install DESTDIR=${{ env.DIST_DIR }}
+        
+    - name: Package build result
+      shell: cmd
       run: |
-        Import-Module "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\Common7\Tools\Microsoft.VisualStudio.DevShell.dll"
-        Enter-VsDevShell -VsInstallPath "C:\Program Files\Microsoft Visual Studio\2022\Enterprise" -Arch amd64
-
-        Set-Location objs/lib/nginx-${{ env.NGINX_VER }}
-
-        nmake -f objs/Makefile
-
-    - name: Collect artifact
-      run: |
-        mkdir artifact
-        cp objs/lib/nginx-${{ env.NGINX_VER }}/objs/nginx.exe artifact/
-        cp -r objs/lib/nginx-${{ env.NGINX_VER }}/conf artifact/
-        cp -r objs/lib/nginx-${{ env.NGINX_VER }}/html artifact/
-
-    - name: Upload
-      uses: actions/upload-artifact@v4
-      with:
-        name: nginx-rtmp-httpflv-win64
-        path: artifact
-
-    - name: Package final zip
-      run: |
-        cd artifact
-        7z a ../nginx-rtmp-httpflv-win64.zip .
-
-    - name: Create/Update GitHub Release
-      uses: softprops/action-gh-release@v2
-      if: github.ref == 'refs/heads/main'
-      with:
-        tag_name: nightly
-        name: "Nightly build (${{ github.run_number }})"
-        body: |
-          ## 🚀 自动构建 Windows 版 nginx
-          - **Nginx** ${{ env.NGINX_VER }}
-          - **nginx-rtmp-module** ${{ env.RTMP_VER }}
-          - **nginx-http-flv-module** ${{ env.HTTPFLV_VER }}
-          - **OpenSSL** ${{ env.OPENSSL_VER }}
-          - **PCRE2** ${{ env.PCRE2_VER }}
-          - **zlib** ${{ env.ZLIB_VER }}
-
-          ### ✅ 功能
-          - RTMP 推流 / 播放
-          - HTTP-FLV 播放
-          - HLS 切片
-          - 静态文件 / 反向代理
-
-          ### 📦 使用
-          1. 下载 `nginx-rtmp-httpflv-win64.zip`
-          2. 解压后直接双击 `nginx.exe`
-          3. 推流：`ffmpeg -re -i demo.flv -c copy -f flv rtmp://127.0.0.1/live/stream`
-          4. 播放：
-             - RTMP：`rtmp://127.0.0.1/live/stream`
-             - HTTP-FLV：`http://127.0.0.1/live?app=live&stream=stream`
-             - HLS：`http://127.0.0.1/hls/stream.m3u8`
-
-          详细配置见包内 `conf/nginx.conf`。
-        files: nginx-rtmp-httpflv-win64.zip
-        prerelease: true                    # 设置为预发布，正式发版可改为 false
+        cd C:\nginx-build\dist
+        7z a -tzip ${{ env.ARTIFACT_NAME }}-${{ github.ref_name }}.zip *
+        
+    - name: Create GitHub Release
+      id: create_release
+      uses: actions/create-release@v1
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: ${{ github.ref }}
+        release_name: Nginx Windows Build ${{ github.ref_name }}
+        body: |
+          Nginx Windows版本，包含以下模块：
+          - RTMP模块 (${{ env.RTMP_MODULE_REPO }}, 分支: ${{ env.RTMP_MODULE_BRANCH }})
+          - HLS支持
+          - HTTP-FLV模块 (${{ env.FLV_MODULE_REPO }}, 分支: ${{ env.FLV_MODULE_BRANCH }})
+          - SSL模块
+          - MP4支持
+          
+          基于Nginx v${{ env.NGINX_VERSION }}编译
+        draft: false
+        prerelease: false
+        
+    - name: Upload Release Asset
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: ${{ env.DIST_DIR }}/${{ env.ARTIFACT_NAME }}-${{ github.ref_name }}.zip
+        asset_name: ${{ env.ARTIFACT_NAME }}-${{ github.ref_name }}.zip
+        asset_content_type: application/zip
