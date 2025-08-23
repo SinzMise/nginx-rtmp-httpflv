@@ -32,6 +32,7 @@ jobs:
           git
           patch
           wget
+          unzip
           
     - name: Prepare build environment
       shell: msys2 {0}
@@ -57,16 +58,22 @@ jobs:
         cd ..
         
         # 从GitHub下载PCRE (使用官方镜像仓库)
-        wget https://github.com/PhilipHazel/pcre2/releases/download/pcre-$PCRE_VERSION/pcre-$PCRE_VERSION.tar.gz
-        tar -zxvf pcre-$PCRE_VERSION.tar.gz
+        git clone https://github.com/PCRE2Project/pcre.git
+        cd pcre
+        git checkout pcre-$PCRE_VERSION
+        cd ..
         
-        # 从GitHub下载Zlib (使用官方镜像仓库)
-        wget https://github.com/madler/zlib/releases/download/v$ZLIB_VERSION/zlib-$ZLIB_VERSION.tar.gz
-        tar -zxvf zlib-$ZLIB_VERSION.tar.gz
+        # 从GitHub下载Zlib (使用官方仓库)
+        git clone https://github.com/madler/zlib.git
+        cd zlib
+        git checkout v$ZLIB_VERSION
+        cd ..
         
         # 从GitHub下载OpenSSL (使用官方镜像仓库)
-        wget https://github.com/openssl/openssl/releases/download/openssl-$OPENSSL_VERSION/openssl-$OPENSSL_VERSION.tar.gz
-        tar -zxvf openssl-$OPENSSL_VERSION.tar.gz
+        git clone https://github.com/openssl/openssl.git
+        cd openssl
+        git checkout openssl-$OPENSSL_VERSION
+        cd ..
         
     - name: Configure and build Nginx
       shell: msys2 {0}
@@ -83,9 +90,9 @@ jobs:
           --pid-path=logs/nginx.pid \
           --http-log-path=logs/access.log \
           --error-log-path=logs/error.log \
-          --with-pcre=../pcre-$PCRE_VERSION \
-          --with-zlib=../zlib-$ZLIB_VERSION \
-          --with-openssl=../openssl-$OPENSSL_VERSION \
+          --with-pcre=../pcre \
+          --with-zlib=../zlib \
+          --with-openssl=../openssl \
           --with-http_ssl_module \
           --with-http_flv_module \
           --with-http_mp4_module \
