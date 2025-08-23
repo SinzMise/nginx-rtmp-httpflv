@@ -102,11 +102,11 @@ jobs:
         shell: bash
         run: |
           mkdir -p nginx-package
-          cp nginx/objs/nginx.exe nginx-package/
-          cp -r nginx/conf nginx-package/
-          cp -r nginx/html nginx-package/
-          cp -r nginx/docs nginx-package/
-          cp -r nginx/contrib nginx-package/
+          cp nginx/objs/nginx.exe     nginx-package/
+          cp -r nginx/conf            nginx-package/
+          cp -r nginx/docs/html       nginx-package/html
+          cp -r nginx/docs            nginx-package/
+          cp -r nginx/contrib         nginx-package/
           7z a nginx-windows-rtmp-hls-httpflv.zip nginx-package
 
       #--------------------------------------------
