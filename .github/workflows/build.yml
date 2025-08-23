@@ -54,6 +54,9 @@ jobs:
         with:
           perl-version: '5.38'
 
+      - name: Enable Developer Command Prompt
+        uses: ilammy/msvc-dev-cmd@v1
+
       - name: Download deps
         shell: bash
         working-directory: nginx/objs/lib
