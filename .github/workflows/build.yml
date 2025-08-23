@@ -98,7 +98,7 @@ jobs:
             --with-pcre=objs/lib/pcre2 \
             --with-zlib=objs/lib/zlib \
             --with-openssl=objs/lib/openssl \
-            --with-openssl-opt="$ssl_opt" \
+            --with-openssl-opt="no-shared no-threads $ssl_target" \
             --with-http_ssl_module \
             --add-module=objs/lib/nginx-http-flv-module
 
