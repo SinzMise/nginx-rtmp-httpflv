@@ -2,11 +2,11 @@ name: Build Nginx Windows with RTMP/HLS/HTTP-FLV
 
 on:
   push:
-    branches: [ main ]
-  workflow_dispatch:
+    branches: [ main ]  # 当main分支有推送时触发
+  workflow_dispatch:    # 支持手动触发工作流
 
 env:
-  NGINX_VERSION: 1.25.3           # 指定Nginx版本
+  # 保持Nginx使用默认版本（从源码仓库获取），不指定具体版本号
   RTMP_MODULE_VERSION: 1.2.2      # nginx-rtmp-module版本
   HTTP_FLV_MODULE_VERSION: 1.2.10 # nginx-http-flv-module版本
   PCRE_VERSION: 8.45              # PCRE版本
@@ -40,9 +40,12 @@ jobs:
         mkdir -p $BUILD_DIR
         cd $BUILD_DIR
         
-        # 下载Nginx源码
-        wget http://nginx.org/download/nginx-$NGINX_VERSION.tar.gz
-        tar -zxvf nginx-$NGINX_VERSION.tar.gz
+        # 克隆Nginx源码仓库（使用默认版本）
+        git clone https://github.com/nginx/nginx.git
+        cd nginx
+        # 可以根据需要检出特定分支，如稳定版
+        # git checkout stable-1.24
+        cd ..
         
         # 下载nginx-rtmp-module
         git clone https://github.com/arut/nginx-rtmp-module.git
@@ -71,10 +74,10 @@ jobs:
     - name: Configure and build Nginx
       shell: msys2 {0}
       run: |
-        cd $BUILD_DIR/nginx-$NGINX_VERSION
+        cd $BUILD_DIR/nginx
         
         # 配置编译选项，包含所需模块和指定版本的依赖
-        ./configure \
+        ./auto/configure \
           --with-cc=gcc \
           --with-debug \
           --prefix= \
@@ -112,10 +115,10 @@ jobs:
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
-        tag_name: ${{ github.ref }}
-        release_name: Nginx Windows Build ${{ github.ref_name }}
+        tag_name: build-${{ github.sha }}
+        release_name: Nginx Windows Build ${{ github.sha }}
         draft: false
-        prerelease: false
+        prerelease: true
         
     - name: Upload Release Asset
       uses: actions/upload-release-asset@v1
@@ -124,5 +127,5 @@ jobs:
       with:
         upload_url: ${{ steps.create_release.outputs.upload_url }}
         asset_path: C:\nginx-build\nginx-win\nginx-windows-rtmp-hls-flv.zip
-        asset_name: nginx-windows-${{ env.NGINX_VERSION }}-rtmp-${{ env.RTMP_MODULE_VERSION }}-flv-${{ env.HTTP_FLV_MODULE_VERSION }}.zip
+        asset_name: nginx-windows-rtmp-${{ env.RTMP_MODULE_VERSION }}-flv-${{ env.HTTP_FLV_MODULE_VERSION }}.zip
         asset_content_type: application/zip
