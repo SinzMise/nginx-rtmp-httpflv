@@ -6,7 +6,7 @@ on:
   workflow_dispatch:    # 支持手动触发工作流
 
 env:
-  # 保持Nginx使用默认版本（从源码仓库获取），不指定具体版本号
+  NGINX_VERSION: 1.25.3           # 指定Nginx版本
   RTMP_MODULE_VERSION: 1.2.2      # nginx-rtmp-module版本
   HTTP_FLV_MODULE_VERSION: 1.2.10 # nginx-http-flv-module版本
   PCRE_VERSION: 8.45              # PCRE版本
@@ -40,12 +40,9 @@ jobs:
         mkdir -p $BUILD_DIR
         cd $BUILD_DIR
         
-        # 克隆Nginx源码仓库（使用默认版本）
-        git clone https://github.com/nginx/nginx.git
-        cd nginx
-        # 可以根据需要检出特定分支，如稳定版
-        # git checkout stable-1.24
-        cd ..
+        # 下载Nginx源码
+        wget http://nginx.org/download/nginx-$NGINX_VERSION.tar.gz
+        tar -zxvf nginx-$NGINX_VERSION.tar.gz
         
         # 下载nginx-rtmp-module
         git clone https://github.com/arut/nginx-rtmp-module.git
@@ -59,25 +56,25 @@ jobs:
         git checkout v$HTTP_FLV_MODULE_VERSION
         cd ..
         
-        # 下载PCRE
-        wget https://ftp.pcre.org/pub/pcre/pcre-$PCRE_VERSION.tar.gz
+        # 从GitHub下载PCRE (使用官方镜像仓库)
+        wget https://github.com/PhilipHazel/pcre2/releases/download/pcre-$PCRE_VERSION/pcre-$PCRE_VERSION.tar.gz
         tar -zxvf pcre-$PCRE_VERSION.tar.gz
         
-        # 下载Zlib
-        wget https://zlib.net/zlib-$ZLIB_VERSION.tar.gz
+        # 从GitHub下载Zlib (使用官方镜像仓库)
+        wget https://github.com/madler/zlib/releases/download/v$ZLIB_VERSION/zlib-$ZLIB_VERSION.tar.gz
         tar -zxvf zlib-$ZLIB_VERSION.tar.gz
         
-        # 下载OpenSSL
-        wget https://www.openssl.org/source/openssl-$OPENSSL_VERSION.tar.gz
+        # 从GitHub下载OpenSSL (使用官方镜像仓库)
+        wget https://github.com/openssl/openssl/releases/download/openssl-$OPENSSL_VERSION/openssl-$OPENSSL_VERSION.tar.gz
         tar -zxvf openssl-$OPENSSL_VERSION.tar.gz
         
     - name: Configure and build Nginx
       shell: msys2 {0}
       run: |
-        cd $BUILD_DIR/nginx
+        cd $BUILD_DIR/nginx-$NGINX_VERSION
         
         # 配置编译选项，包含所需模块和指定版本的依赖
-        ./auto/configure \
+        ./configure \
           --with-cc=gcc \
           --with-debug \
           --prefix= \
@@ -127,5 +124,5 @@ jobs:
       with:
         upload_url: ${{ steps.create_release.outputs.upload_url }}
         asset_path: C:\nginx-build\nginx-win\nginx-windows-rtmp-hls-flv.zip
-        asset_name: nginx-windows-rtmp-${{ env.RTMP_MODULE_VERSION }}-flv-${{ env.HTTP_FLV_MODULE_VERSION }}.zip
+        asset_name: nginx-windows-${{ env.NGINX_VERSION }}-rtmp-${{ env.RTMP_MODULE_VERSION }}-flv-${{ env.HTTP_FLV_MODULE_VERSION }}.zip
         asset_content_type: application/zip
