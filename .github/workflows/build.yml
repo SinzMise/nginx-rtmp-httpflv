@@ -17,6 +17,11 @@ jobs:
 
     steps:
       #--------------------------------------------
+      # 0. 前置依赖安装
+      #--------------------------------------------
+      - name: Install NASM
+        uses: ilammy/setup-nasm@v1
+      #--------------------------------------------
       # 1. 签出官方 nginx 源码
       #--------------------------------------------
       - name: Checkout nginx
@@ -53,9 +58,6 @@ jobs:
         uses: shogo82148/actions-setup-perl@v1
         with:
           perl-version: '5.38'
-
-      - name: Enable Developer Command Prompt
-        uses: ilammy/msvc-dev-cmd@v1
 
       - name: Download deps
         shell: bash
