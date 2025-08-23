@@ -73,19 +73,19 @@ jobs:
         shell: bash
         working-directory: nginx
         run: |
-          ./auto/configure ^
-            --with-cc=cl ^
-            --prefix= ^
-            --conf-path=conf/nginx.conf ^
-            --pid-path=logs/nginx.pid ^
-            --http-log-path=logs/access.log ^
-            --error-log-path=logs/error.log ^
-            --sbin-path=nginx.exe ^
-            --with-pcre=objs/lib/pcre2 ^
-            --with-zlib=objs/lib/zlib ^
-            --with-openssl=objs/lib/openssl ^
-            --with-http_ssl_module ^
-            --add-module=objs/lib/nginx-http-flv-module ^
+          ./auto/configure \
+            --with-cc=cl \
+            --prefix= \
+            --conf-path=conf/nginx.conf \
+            --pid-path=logs/nginx.pid \
+            --http-log-path=logs/access.log \
+            --error-log-path=logs/error.log \
+            --sbin-path=nginx.exe \
+            --with-pcre=objs/lib/pcre2 \
+            --with-zlib=objs/lib/zlib \
+            --with-openssl=objs/lib/openssl \
+            --with-http_ssl_module \
+            --add-module=objs/lib/nginx-http-flv-module \
             --add-module=objs/lib/nginx-rtmp-module
 
       - name: Build
