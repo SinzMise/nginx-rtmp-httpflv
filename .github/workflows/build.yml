@@ -120,7 +120,6 @@ jobs:
           name: Nginx ${{ env.NGINX_VER }} with RTMP/HLS/HTTP-FLV (Windows x64)
           body: |
             自动编译的 Windows 版 Nginx，已集成：
-            - nginx-rtmp-module
             - nginx-http-flv-module
             - OpenSSL ${{ env.OPENSSL_VER }}
             - PCRE2 ${{ env.PCRE2_VER }}
