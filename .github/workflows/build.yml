@@ -59,17 +59,18 @@ jobs:
         working-directory: nginx/objs/lib
         run: |
           curl -L https://github.com/PCRE2Project/pcre2/releases/download/pcre2-${{ env.PCRE2_VER }}/pcre2-${{ env.PCRE2_VER }}.zip -o pcre2.zip
-          curl -L https://zlib.net/fossils/zlib-${{ env.ZLIB_VER }}.zip -o zlib.zip
+          curl -L https://zlib.net/fossils/zlib-${{ env.ZLIB_VER }}.tar.gz -o zlib.tar.gz
           curl -L https://www.openssl.org/source/openssl-${{ env.OPENSSL_VER }}.tar.gz -o openssl.tar.gz
+
           unzip -q pcre2.zip && mv pcre2-${{ env.PCRE2_VER }} pcre2
-          unzip -q zlib.zip  && mv zlib-${{ env.ZLIB_VER }}  zlib
+          tar -xzf zlib.tar.gz   && mv zlib-${{ env.ZLIB_VER }}  zlib
           tar -xzf openssl.tar.gz && mv openssl-${{ env.OPENSSL_VER }} openssl
 
       #--------------------------------------------
       # 4. 配置 & 编译
       #--------------------------------------------
       - name: Configure
-        shell: cmd
+        shell: bash
         working-directory: nginx
         run: |
           ./auto/configure ^
