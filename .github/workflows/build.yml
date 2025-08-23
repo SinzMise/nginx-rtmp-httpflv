@@ -1,135 +1,85 @@
 name: Build Nginx Windows with RTMP/HLS/HTTP-FLV
 
 on:
-  push:
-    branches: [ main ]  # 当main分支有推送时触发
-  workflow_dispatch:    # 支持手动触发工作流
-
-env:
-  NGINX_VERSION: 1.25.3           # 指定Nginx版本
-  RTMP_MODULE_VERSION: 1.2.2      # nginx-rtmp-module版本
-  HTTP_FLV_MODULE_VERSION: 1.2.10 # nginx-http-flv-module版本
-  PCRE_VERSION: 8.45              # PCRE版本
-  ZLIB_VERSION: 1.3               # Zlib版本
-  OPENSSL_VERSION: 3.1.4          # OpenSSL版本
-  BUILD_DIR: /c/nginx-build       # 构建目录
+  workflow_dispatch:
 
 jobs:
   build:
     runs-on: windows-latest
-    
+
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v3
-      
-    - name: Setup MSYS2
-      uses: msys2/setup-msys2@v2
-      with:
-        update: true
-        install: >-
-          mingw-w64-x86_64-gcc
-          mingw-w64-x86_64-make
-          git
-          patch
-          wget
-          unzip
-          
-    - name: Prepare build environment
-      shell: msys2 {0}
-      run: |
-        # 创建工作目录
-        mkdir -p $BUILD_DIR
-        cd $BUILD_DIR
-        
-        # 下载Nginx源码
-        wget http://nginx.org/download/nginx-$NGINX_VERSION.tar.gz
-        tar -zxvf nginx-$NGINX_VERSION.tar.gz
-        
-        # 下载nginx-rtmp-module
-        git clone https://github.com/arut/nginx-rtmp-module.git
-        cd nginx-rtmp-module
-        git checkout v$RTMP_MODULE_VERSION
-        cd ..
-        
-        # 下载nginx-http-flv-module
-        git clone https://github.com/winshining/nginx-http-flv-module.git
-        cd nginx-http-flv-module
-        git checkout v$HTTP_FLV_MODULE_VERSION
-        cd ..
-        
-        # 从GitHub下载PCRE (使用官方镜像仓库)
-        git clone https://github.com/PCRE2Project/pcre.git
-        cd pcre
-        git checkout pcre-$PCRE_VERSION
-        cd ..
-        
-        # 从GitHub下载Zlib (使用官方仓库)
-        git clone https://github.com/madler/zlib.git
-        cd zlib
-        git checkout v$ZLIB_VERSION
-        cd ..
-        
-        # 从GitHub下载OpenSSL (使用官方镜像仓库)
-        git clone https://github.com/openssl/openssl.git
-        cd openssl
-        git checkout openssl-$OPENSSL_VERSION
-        cd ..
-        
-    - name: Configure and build Nginx
-      shell: msys2 {0}
-      run: |
-        cd $BUILD_DIR/nginx-$NGINX_VERSION
-        
-        # 配置编译选项，包含所需模块和指定版本的依赖
-        ./configure \
-          --with-cc=gcc \
-          --with-debug \
-          --prefix= \
-          --sbin-path=nginx.exe \
-          --conf-path=conf/nginx.conf \
-          --pid-path=logs/nginx.pid \
-          --http-log-path=logs/access.log \
-          --error-log-path=logs/error.log \
-          --with-pcre=../pcre \
-          --with-zlib=../zlib \
-          --with-openssl=../openssl \
-          --with-http_ssl_module \
-          --with-http_flv_module \
-          --with-http_mp4_module \
-          --add-module=../nginx-rtmp-module \
-          --add-module=../nginx-http-flv-module \
-          --crossbuild=win32 \
-          --with-cc-opt=-DWIN32
-        
-        # 编译
-        make
-        
-        # 安装到指定目录
-        make install DESTDIR=$BUILD_DIR/nginx-win
-        
-    - name: Package build artifacts
-      shell: cmd
-      run: |
-        cd C:\nginx-build\nginx-win
-        7z a -tzip nginx-windows-rtmp-hls-flv.zip *
-        
-    - name: Create GitHub Release
-      id: create_release
-      uses: actions/create-release@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        tag_name: build-${{ github.sha }}
-        release_name: Nginx Windows Build ${{ github.sha }}
-        draft: false
-        prerelease: true
-        
-    - name: Upload Release Asset
-      uses: actions/upload-release-asset@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: C:\nginx-build\nginx-win\nginx-windows-rtmp-hls-flv.zip
-        asset_name: nginx-windows-${{ env.NGINX_VERSION }}-rtmp-${{ env.RTMP_MODULE_VERSION }}-flv-${{ env.HTTP_FLV_MODULE_VERSION }}.zip
-        asset_content_type: application/zip
+      - name: Checkout nginx source
+        uses: actions/checkout@v4
+        with:
+          repository: nginx/nginx
+          path: nginx
+
+      - name: Checkout nginx-http-flv-module
+        uses: actions/checkout@v4
+        with:
+          repository: winshining/nginx-http-flv-module
+          path: nginx-http-flv-module
+
+      - name: Checkout nginx-rtmp-module
+        uses: actions/checkout@v4
+        with:
+          repository: arut/nginx-rtmp-module
+          path: nginx-rtmp-module
+
+      - name: Setup Visual Studio
+        uses: microsoft/setup-msbuild@v2
+        with:
+          vs-version: '[17.0,18.0)'
+
+      - name: Setup Perl
+        uses: shogo82148/actions-setup-perl@v1
+        with:
+          perl-version: '5.34'
+
+      - name: Download dependencies
+        shell: bash
+        run: |
+          mkdir -p nginx/objs/lib
+          cd nginx/objs/lib
+          curl -L https://github.com/PCRE2Project/pcre2/releases/download/pcre2-10.42/pcre2-10.42.zip -o pcre2.zip
+          curl -L https://zlib.net/zlib1213.zip -o zlib.zip
+          curl -L https://www.openssl.org/source/openssl-1.1.1w.tar.gz -o openssl.tar.gz
+          unzip -q pcre2.zip && mv pcre2-* pcre2
+          unzip -q zlib.zip && mv zlib-* zlib
+          tar -xf openssl.tar.gz && mv openssl-* openssl
+
+      - name: Configure nginx
+        shell: cmd
+        run: |
+          cd nginx
+          auto/configure \
+            --with-cc=cl \
+            --prefix= \
+            --conf-path=conf/nginx.conf \
+            --pid-path=logs/nginx.pid \
+            --http-log-path=logs/access.log \
+            --error-log-path=logs/error.log \
+            --sbin-path=nginx.exe \
+            --with-pcre=objs/lib/pcre2 \
+            --with-zlib=objs/lib/zlib \
+            --with-openssl=objs/lib/openssl \
+            --with-http_ssl_module \
+            --add-module=../../nginx-http-flv-module \
+            --add-module=../../nginx-rtmp-module
+
+      - name: Build nginx
+        shell: cmd
+        run: |
+          cd nginx
+          nmake -f objs/Makefile
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: nginx-windows-with-rtmp-hls-httpflv
+          path: |
+            nginx/objs/nginx.exe
+            nginx/conf
+            nginx/docs
+            nginx/html
+            nginx/contrib
