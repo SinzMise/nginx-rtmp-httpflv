@@ -84,7 +84,7 @@ jobs:
         run: |
           case "${{ matrix.arch }}" in
             x64) ssl_opt="no-shared no-threads VC-WIN64A" ;;
-            x86) ssl_opt="no-shared no-threads VC-WIN32"   ;;
+            x86) ssl_opt="no-shared no-threads VC-WIN32"  ;;
           esac
           ./auto/configure \
             --with-cc=cl \
@@ -98,7 +98,7 @@ jobs:
             --with-pcre=objs/lib/pcre2 \
             --with-zlib=objs/lib/zlib \
             --with-openssl=objs/lib/openssl \
-            --with-openssl-opt="no-shared no-threads $ssl_target" \
+            --with-openssl-opt="$ssl_opt" \
             --with-http_ssl_module \
             --add-module=objs/lib/nginx-http-flv-module
 
