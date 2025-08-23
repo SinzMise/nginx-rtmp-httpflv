@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main          # 仅当 push 到 main 时触发
+  workflow_dispatch:
 
 env:
   NGINX_VER: 1.25.3   # 想编译哪个版本就改这里
