@@ -2,8 +2,8 @@ name: Build Nginx Windows with RTMP/HLS/HTTP-FLV
 
 on:
   push:
-    tags:
-      - 'v*'  # 当推送类似v1.0.0的标签时触发
+    branches: [ main ]
+  workflow_dispatch:
 
 env:
   NGINX_VERSION: 1.25.3           # 指定Nginx版本
