@@ -1,235 +1,128 @@
-name: 构建Nginx Windows版本并发布
+name: Build Nginx Windows with RTMP/HLS/HTTP-FLV
 
 on:
   push:
-    branches: [ main ]
-  workflow_dispatch:
+    tags:
+      - 'v*'  # 当推送类似v1.0.0的标签时触发
 
 env:
-  NGINX_VERSION: 1.25.3  # 指定Nginx版本
-  RTMP_MODULE_VERSION: 1.2.2  # nginx-rtmp-module版本
-  HTTP_FLV_MODULE_VERSION: 1.2.10  # nginx-http-flv-module版本
-  PCRE_VERSION: 8.45  # PCRE版本
-  ZLIB_VERSION: 1.3  # Zlib版本
-  OPENSSL_VERSION: 3.1.4  # OpenSSL版本
+  NGINX_VERSION: 1.25.3           # 指定Nginx版本
+  RTMP_MODULE_VERSION: 1.2.2      # nginx-rtmp-module版本
+  HTTP_FLV_MODULE_VERSION: 1.2.10 # nginx-http-flv-module版本
+  PCRE_VERSION: 8.45              # PCRE版本
+  ZLIB_VERSION: 1.3               # Zlib版本
+  OPENSSL_VERSION: 3.1.4          # OpenSSL版本
+  BUILD_DIR: /c/nginx-build       # 构建目录
 
 jobs:
-  build-windows-nginx:
-    name: 构建Windows版Nginx
+  build:
     runs-on: windows-latest
-
-    steps:
-    - name: 检出代码
-      uses: actions/checkout@v4
-
-    - name: 设置MSVC环境
-      uses: ilammy/msvc-dev-cmd@v1
-      with:
-        arch: x64
-
-    - name: 下载依赖源码
-      run: |
-        # 创建构建目录
-        mkdir build
-        cd build
-        
-        # 下载Nginx源码
-        curl -L -o nginx-${{ env.NGINX_VERSION }}.tar.gz https://nginx.org/download/nginx-${{ env.NGINX_VERSION }}.tar.gz
-        tar -zxvf nginx-${{ env.NGINX_VERSION }}.tar.gz
-        
-        # 下载RTMP模块
-        curl -L -o nginx-rtmp-module-${{ env.RTMP_MODULE_VERSION }}.tar.gz https://github.com/arut/nginx-rtmp-module/archive/refs/tags/v${{ env.RTMP_MODULE_VERSION }}.tar.gz
-        tar -zxvf nginx-rtmp-module-${{ env.RTMP_MODULE_VERSION }}.tar.gz
-        
-        # 下载HTTP-FLV模块
-        curl -L -o nginx-http-flv-module-${{ env.HTTP_FLV_MODULE_VERSION }}.tar.gz https://github.com/winshining/nginx-http-flv-module/archive/refs/tags/v${{ env.HTTP_FLV_MODULE_VERSION }}.tar.gz
-        tar -zxvf nginx-http-flv-module-${{ env.HTTP_FLV_MODULE_VERSION }}.tar.gz
-        
-        # 下载PCRE
-        curl -L -o pcre-${{ env.PCRE_VERSION }}.tar.gz https://sourceforge.net/projects/pcre/files/pcre/${{ env.PCRE_VERSION }}/pcre-${{ env.PCRE_VERSION }}.tar.gz/download
-        tar -zxvf pcre-${{ env.PCRE_VERSION }}.tar.gz
-        
-        # 下载Zlib
-        curl -L -o zlib-${{ env.ZLIB_VERSION }}.tar.gz https://zlib.net/zlib-${{ env.ZLIB_VERSION }}.tar.gz
-        tar -zxvf zlib-${{ env.ZLIB_VERSION }}.tar.gz
-        
-        # 下载OpenSSL
-        curl -L -o openssl-${{ env.OPENSSL_VERSION }}.tar.gz https://www.openssl.org/source/openssl-${{ env.OPENSSL_VERSION }}.tar.gz
-        tar -zxvf openssl-${{ env.OPENSSL_VERSION }}.tar.gz
-
-    - name: 配置Nginx
-      run: |
-        cd build/nginx-${{ env.NGINX_VERSION }}
-        
-        # 配置Nginx，启用所需模块
-        ./configure --with-cc=cl --with-debug --prefix= --conf-path=conf/nginx.conf --pid-path=logs/nginx.pid --http-log-path=logs/access.log --error-log-path=logs/error.log --sbin-path=nginx.exe --http-client-body-temp-path=temp/client_body_temp --http-proxy-temp-path=temp/proxy_temp --http-fastcgi-temp-path=temp/fastcgi_temp --http-scgi-temp-path=temp/scgi_temp --http-uwsgi-temp-path=temp/uwsgi_temp --with-pcre=../pcre-${{ env.PCRE_VERSION }} --with-zlib=../zlib-${{ env.ZLIB_VERSION }} --with-openssl=../openssl-${{ env.OPENSSL_VERSION }} --with-http_ssl_module --with-http_v2_module --with-http_realip_module --with-http_addition_module --with-http_sub_module --with-http_dav_module --with-http_stub_status_module --with-http_flv_module --with-http_mp4_module --with-http_gunzip_module --with-http_gzip_static_module --with-http_auth_request_module --with-http_random_index_module --with-http_secure_link_module --with-http_slice_module --with-mail --with-stream --with-stream_ssl_module --add-module=../nginx-rtmp-module-${{ env.RTMP_MODULE_VERSION }} --add-module=../nginx-http-flv-module-${{ env.HTTP_FLV_MODULE_VERSION }}
-
-    - name: 编译Nginx
-      run: |
-        cd build/nginx-${{ env.NGINX_VERSION }}
-        nmake
-
-    - name: 创建分发包
-      run: |
-        # 创建分发目录
-        mkdir nginx-${{ env.NGINX_VERSION }}-windows-rtmp
-        cd nginx-${{ env.NGINX_VERSION }}-windows-rtmp
-        
-        # 复制Nginx可执行文件
-        cp ../build/nginx-${{ env.NGINX_VERSION }}/objs/nginx.exe .
-        
-        # 创建必要的目录
-        mkdir conf logs temp
-        
-        # 复制默认配置文件
-        cp ../build/nginx-${{ env.NGINX_VERSION }}/conf/nginx.conf conf/
-        
-        # 创建示例RTMP配置
-        @"
-        rtmp {
-            server {
-                listen 1935;
-                chunk_size 4096;
-                
-                application live {
-                    live on;
-                    record off;
-                    
-                    # HLS配置
-                    hls on;
-                    hls_path temp/hls;
-                    hls_fragment 3s;
-                    hls_playlist_length 60s;
-                    
-                    # HTTP-FLV配置
-                    pull rtmp://example.com/live/streamname static;
-                }
-            }
-        }
-        
-        http {
-            server {
-                listen 80;
-                
-                location /hls {
-                    types {
-                        application/vnd.apple.mpegurl m3u8;
-                        video/mp2t ts;
-                    }
-                    root temp;
-                    add_header Cache-Control no-cache;
-                    add_header Access-Control-Allow-Origin *;
-                }
-                
-                location /live {
-                    flv_live on;
-                    chunked_transfer_encoding on;
-                    add_header Access-Control-Allow-Origin *;
-                    add_header Access-Control-Allow-Credentials true;
-                }
-                
-                location /stat {
-                    rtmp_stat all;
-                    rtmp_stat_stylesheet stat.xsl;
-                }
-                
-                location /stat.xsl {
-                    root ../nginx-http-flv-module-${{ env.HTTP_FLV_MODULE_VERSION }};
-                }
-            }
-        }
-        "@ | Out-File -Encoding UTF8 conf/rtmp.conf
-        
-        # 创建README文件
-        @"
-        # Nginx Windows版 with RTMP/HLS/HTTP-FLV 支持
-        
-        此版本Nginx包含以下模块:
-        - nginx-rtmp-module v${{ env.RTMP_MODULE_VERSION }}
-        - nginx-http-flv-module v${{ env.HTTP_FLV_MODULE_VERSION }}
-        - 标准HTTP FLV和HLS支持
-        
-        ## 快速开始
-        
-        1. 编辑 conf/nginx.conf 文件，在http块中添加: 
-           include rtmp.conf;
-        
-        2. 启动Nginx:
-           .\nginx.exe
-           
-        3. 使用RTMP推流:
-           rtmp://localhost:1935/live/流名称
-           
-        4. 播放流:
-           - HTTP-FLV: http://localhost:80/live?app=live&stream=流名称
-           - HLS: http://localhost:80/hls/流名称.m3u8
-        
-        ## 注意事项
-        - 确保1935(RTMP)和80(HTTP)端口未被占用
-        - 防火墙设置允许相关端口访问
-        - 使用Ctrl+C停止Nginx服务
-        "@ | Out-File -Encoding UTF8 README.md
-
-        # 打包
-        Compress-Archive -Path * -DestinationPath ../nginx-${{ env.NGINX_VERSION }}-windows-rtmp.zip
-
-    - name: 上传制品
-      uses: actions/upload-artifact@v4
-      with:
-        name: nginx-windows-rtmp
-        path: build/nginx-${{ env.NGINX_VERSION }}-windows-rtmp.zip
-
-  create-release:
-    name: 创建发布版本
-    needs: build-windows-nginx
-    runs-on: ubuntu-latest
-    if: startsWith(github.ref, 'refs/tags/v')
     
     steps:
-    - name: 下载制品
-      uses: actions/download-artifact@v4
+    - name: Checkout code
+      uses: actions/checkout@v3
+      
+    - name: Setup MSYS2
+      uses: msys2/setup-msys2@v2
       with:
-        name: nginx-windows-rtmp
-
-    - name: 创建中文Release
-      uses: softprops/action-gh-release@v1
-      with:
-        files: nginx-*-windows-rtmp.zip
-        body: |
-          # Nginx Windows版 with RTMP/HLS/HTTP-FLV 支持
+        update: true
+        install: >-
+          mingw-w64-x86_64-gcc
+          mingw-w64-x86_64-make
+          git
+          patch
+          wget
           
-          ## 版本信息
-          - Nginx: ${{ env.NGINX_VERSION }}
-          - nginx-rtmp-module: ${{ env.RTMP_MODULE_VERSION }}
-          - nginx-http-flv-module: ${{ env.HTTP_FLV_MODULE_VERSION }}
-          - OpenSSL: ${{ env.OPENSSL_VERSION }}
-          
-          ## 功能特性
-          - ✅ RTMP直播推流和拉流
-          - ✅ HTTP-FLV直播播放
-          - ✅ HLS直播和点播
-          - ✅ HTTPS支持
-          - ✅ HTTP/2支持
-          
-          ## 使用说明
-          1. 解压下载的ZIP文件
-          2. 编辑 `conf/nginx.conf`，在http块中添加: `include rtmp.conf;`
-          3. 运行 `nginx.exe` 启动服务
-          4. 使用RTMP推流到: `rtmp://localhost:1935/live/流名称`
-          5. 通过以下方式播放:
-             - HTTP-FLV: `http://localhost:80/live?app=live&stream=流名称`
-             - HLS: `http://localhost:80/hls/流名称.m3u8`
-          
-          ## 注意事项
-          - 首次使用前请检查防火墙设置
-          - 默认配置包含示例RTMP应用，可根据需要修改
-          - 查看 `README.md` 获取更多详细信息
-          
-          ## 更新日志
-          查看GitHub提交历史获取详细更新信息。
-        tag_name: ${{ github.ref_name }}
-        name: "Nginx Windows RTMP版 ${{ env.NGINX_VERSION }}"
-        draft: false
-        prerelease: false
+    - name: Prepare build environment
+      shell: msys2 {0}
+      run: |
+        # 创建工作目录
+        mkdir -p $BUILD_DIR
+        cd $BUILD_DIR
+        
+        # 下载Nginx源码
+        wget http://nginx.org/download/nginx-$NGINX_VERSION.tar.gz
+        tar -zxvf nginx-$NGINX_VERSION.tar.gz
+        
+        # 下载nginx-rtmp-module
+        git clone https://github.com/arut/nginx-rtmp-module.git
+        cd nginx-rtmp-module
+        git checkout v$RTMP_MODULE_VERSION
+        cd ..
+        
+        # 下载nginx-http-flv-module
+        git clone https://github.com/winshining/nginx-http-flv-module.git
+        cd nginx-http-flv-module
+        git checkout v$HTTP_FLV_MODULE_VERSION
+        cd ..
+        
+        # 下载PCRE
+        wget https://ftp.pcre.org/pub/pcre/pcre-$PCRE_VERSION.tar.gz
+        tar -zxvf pcre-$PCRE_VERSION.tar.gz
+        
+        # 下载Zlib
+        wget https://zlib.net/zlib-$ZLIB_VERSION.tar.gz
+        tar -zxvf zlib-$ZLIB_VERSION.tar.gz
+        
+        # 下载OpenSSL
+        wget https://www.openssl.org/source/openssl-$OPENSSL_VERSION.tar.gz
+        tar -zxvf openssl-$OPENSSL_VERSION.tar.gz
+        
+    - name: Configure and build Nginx
+      shell: msys2 {0}
+      run: |
+        cd $BUILD_DIR/nginx-$NGINX_VERSION
+        
+        # 配置编译选项，包含所需模块和指定版本的依赖
+        ./configure \
+          --with-cc=gcc \
+          --with-debug \
+          --prefix= \
+          --sbin-path=nginx.exe \
+          --conf-path=conf/nginx.conf \
+          --pid-path=logs/nginx.pid \
+          --http-log-path=logs/access.log \
+          --error-log-path=logs/error.log \
+          --with-pcre=../pcre-$PCRE_VERSION \
+          --with-zlib=../zlib-$ZLIB_VERSION \
+          --with-openssl=../openssl-$OPENSSL_VERSION \
+          --with-http_ssl_module \
+          --with-http_flv_module \
+          --with-http_mp4_module \
+          --add-module=../nginx-rtmp-module \
+          --add-module=../nginx-http-flv-module \
+          --crossbuild=win32 \
+          --with-cc-opt=-DWIN32
+        
+        # 编译
+        make
+        
+        # 安装到指定目录
+        make install DESTDIR=$BUILD_DIR/nginx-win
+        
+    - name: Package build artifacts
+      shell: cmd
+      run: |
+        cd C:\nginx-build\nginx-win
+        7z a -tzip nginx-windows-rtmp-hls-flv.zip *
+        
+    - name: Create GitHub Release
+      id: create_release
+      uses: actions/create-release@v1
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: ${{ github.ref }}
+        release_name: Nginx Windows Build ${{ github.ref_name }}
+        draft: false
+        prerelease: false
+        
+    - name: Upload Release Asset
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: C:\nginx-build\nginx-win\nginx-windows-rtmp-hls-flv.zip
+        asset_name: nginx-windows-${{ env.NGINX_VERSION }}-rtmp-${{ env.RTMP_MODULE_VERSION }}-flv-${{ env.HTTP_FLV_MODULE_VERSION }}.zip
+        asset_content_type: application/zip
