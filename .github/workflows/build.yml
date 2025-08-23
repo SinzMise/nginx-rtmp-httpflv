@@ -15,13 +15,22 @@ env:
 jobs:
   build:
     runs-on: windows-2022
+    strategy:
+      matrix:
+        arch: [x64, x86]
 
     steps:
       #--------------------------------------------
       # 0. 前置依赖安装
       #--------------------------------------------
+      - name: Enable MSVC Developer Prompt
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: ${{ matrix.arch }}
+
       - name: Install NASM
         uses: ilammy/setup-nasm@v1
+        
       #--------------------------------------------
       # 1. 签出官方 nginx 源码
       #--------------------------------------------
@@ -54,9 +63,6 @@ jobs:
         with:
           perl-version: '5.38'
 
-      - name: Enable Developer Command Prompt
-        uses: ilammy/msvc-dev-cmd@v1
-
       - name: Download deps
         shell: bash
         working-directory: nginx/objs/lib
@@ -76,6 +82,10 @@ jobs:
         shell: bash
         working-directory: nginx
         run: |
+          case "${{ matrix.arch }}" in
+            x64) ssl_target="VC-WIN64A" ;;
+            x86) ssl_target="VC-WIN32"   ;;
+          esac
           ./auto/configure \
             --with-cc=cl \
             --with-cc-opt="-W3 -wd4334" \
@@ -88,6 +98,7 @@ jobs:
             --with-pcre=objs/lib/pcre2 \
             --with-zlib=objs/lib/zlib \
             --with-openssl=objs/lib/openssl \
+            --with-openssl-opt="no-shared no-threads $ssl_target" \
             --with-http_ssl_module \
             --add-module=objs/lib/nginx-http-flv-module
 
@@ -103,12 +114,13 @@ jobs:
         shell: bash
         run: |
           mkdir -p nginx-package
-          cp nginx/objs/nginx.exe     nginx-package/
-          cp -r nginx/conf            nginx-package/
-          cp -r nginx/docs/html       nginx-package/html
-          cp -r nginx/docs            nginx-package/
-          cp -r nginx/contrib         nginx-package/
-          7z a nginx-windows-rtmp-hls-httpflv.zip nginx-package
+          cp nginx/objs/nginx.exe nginx-package/
+          cp -r nginx/conf nginx-package/
+          cp -r nginx/docs/html nginx-package/html
+          cp -r nginx/docs nginx-package/
+          cp -r nginx/contrib nginx-package/
+          suffix=${{ matrix.arch }}
+          7z a nginx-windows-rtmp-hls-httpflv-${suffix}.zip nginx-package
 
       #--------------------------------------------
       # 6. 创建 Release（自动 Tag）
@@ -125,6 +137,8 @@ jobs:
             - OpenSSL ${{ env.OPENSSL_VER }}
             - PCRE2 ${{ env.PCRE2_VER }}
             - zlib ${{ env.ZLIB_VER }}
-          files: nginx-windows-rtmp-hls-httpflv.zip
+          files: |
+            nginx-windows-rtmp-hls-httpflv-x64.zip
+            nginx-windows-rtmp-hls-httpflv-x86.zip
           draft: false
           prerelease: false
