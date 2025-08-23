@@ -72,7 +72,7 @@ jobs:
         shell: cmd
         working-directory: nginx
         run: |
-          auto/configure ^
+          ./auto/configure ^
             --with-cc=cl ^
             --prefix= ^
             --conf-path=conf/nginx.conf ^
