@@ -83,6 +83,7 @@ jobs:
         run: |
           ./auto/configure \
             --with-cc=cl \
+            --with-cc-opt="-W3" \
             --prefix= \
             --conf-path=conf/nginx.conf \
             --pid-path=logs/nginx.pid \
