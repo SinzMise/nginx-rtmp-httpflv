@@ -40,12 +40,6 @@ jobs:
           repository: winshining/nginx-http-flv-module
           path: nginx/objs/lib/nginx-http-flv-module
 
-      - name: Checkout nginx-rtmp-module
-        uses: actions/checkout@v4
-        with:
-          repository: arut/nginx-rtmp-module
-          path: nginx/objs/lib/nginx-rtmp-module
-
       #--------------------------------------------
       # 3. 准备编译环境
       #--------------------------------------------
@@ -94,8 +88,7 @@ jobs:
             --with-zlib=objs/lib/zlib \
             --with-openssl=objs/lib/openssl \
             --with-http_ssl_module \
-            --add-module=objs/lib/nginx-http-flv-module \
-            --add-module=objs/lib/nginx-rtmp-module
+            --add-module=objs/lib/nginx-http-flv-module
 
       - name: Build
         shell: cmd
