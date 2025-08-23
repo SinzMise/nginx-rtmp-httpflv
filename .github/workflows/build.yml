@@ -83,8 +83,8 @@ jobs:
         working-directory: nginx
         run: |
           case "${{ matrix.arch }}" in
-            x64) ssl_target="VC-WIN64A" ;;
-            x86) ssl_target="VC-WIN32"   ;;
+            x64) ssl_opt="no-shared no-threads VC-WIN64A" ;;
+            x86) ssl_opt="no-shared no-threads VC-WIN32"   ;;
           esac
           ./auto/configure \
             --with-cc=cl \
