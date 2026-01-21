@@ -5,6 +5,8 @@ on:
     branches:
       - main          # 仅当 push 到 main 时触发
   workflow_dispatch:
+  schedule:
+    - cron: "0 0 * * 0"
 
 env:
   NGINX_VER: 1.25.3   # 想编译哪个版本就改这里
@@ -141,4 +143,5 @@ jobs:
             nginx-windows-rtmp-hls-httpflv-x64.zip
             nginx-windows-rtmp-hls-httpflv-x86.zip
           draft: false
+
           prerelease: false
